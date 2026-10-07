@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+!.sample.env
+.state
+**/__pycache__
+**/*.py[cod]
+AutoAnimeBot.log
+thumb.jpg
+thumbs
+downloads
+encode

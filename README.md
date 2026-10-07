@@ -1,123 +1,106 @@
-[![Stars](https://img.shields.io/github/stars/kaif-00z/AutoAnimeBot?style=flat-square&color=yellow)](https://github.com/kaif-00z/AutoAnimeBot/stargazers)
-[![Forks](https://img.shields.io/github/forks/kaif-00z/AutoAnimeBot?style=flat-square&color=orange)](https://github.com/kaif-00z/AutoAnimeBotfork)
-[![Python](https://img.shields.io/badge/Python-v3.12.3-blue)](https://www.python.org/)
-[![CodeFactor](https://www.codefactor.io/repository/github/kaif-00z/autoanimebot/badge)](https://www.codefactor.io/repository/github/kaif-00z/autoanimebot)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/kaif-00z/AutoAnimeBot/graphs/commit-activity)
-[![Contributors](https://img.shields.io/github/contributors/kaif-00z/AutoAnimeBot?style=flat-square&color=green)](https://github.com/kaif-00z/AutoAnimeBot/graphs/contributors)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
-[![License](https://img.shields.io/badge/license-GPLv3-blue)](https://github.com/kaif-00z/AutoAnimeBot/blob/main/LICENSE)   
-[![Sparkline](https://stars.medv.io/kaif-00z/AutoAnimeBot.svg)](https://stars.medv.io/kaif-00z/AutoAnimeBot)
+# AutoAnimeBot
 
-## Developer Note
+Telegram bot that watches ongoing anime releases, encodes and posts episodes, and serves stored files through bot deep links. The existing anime polling, download, encoding, button-upload, and sample/screenshot workflows remain available.
 
-- __This repository is not intended or supported for deployment on KOYEB.__
-- If Hosted On Heroku Then Make Sure You Are Using Premium Dynos Or Any Above then basic dynos.
-- If You Don't Have High End VPS like **8vcpu or 32GiB RAM** So Don't Deploy This Bot.
-- You Can Customize FFMPEG Code If You Know What You Are Doing.
-- __Ensure that you have adhered to this developer note before reporting any errors.__
+This repository is a fork of [AutoAnimeBot](https://github.com/kaif-00z/AutoAnimeBot). It retains the upstream GPLv3 license and required source attribution.
 
-## Changelog Of Latest Update
+## Deploy on Railway
 
-### v0.1
-- Shifted To Mongo Database.
-- Changed Hashing Algo To SHA256.
-- Added About Command.
-- Added SS & MediaInfo On/Off
-- Added Separate Anime Channel Upload
-- <details><summary>Click Here To See How Separate Anime Channel Upload Look.</summary><img src="https://graph.org/file/a0636332545730a4d3d43.jpg" alt="sepul1"/><img src="https://graph.org/file/3eb0b86609469f385f4b5.jpg" alt="sepul2"/></details>
-- Added Button Upload Support (File Store)
-- <details><summary>Click Here To See How Button Upload Look.</summary><img src="https://graph.org/file/3e9abc9ec7de6a26fd1a1.jpg" alt="btnul"/></details>
-- Added Multi Thread Encoding
-- Added Progress Bar of Encoding
-- Added Option For Logs In Main Channel
-- Added ForceSub
-- Added 480p Support
-- Added Broadcast
-- Major Modification In FFMPEG Code.
-- Modified Anime Searcher
-- Admin Panel Fixed
-- ReWritten Whole Program (Fully OOPs Based)
-- Optimized Core
-- Added Heroku Support
-- Added Custom CRF Support
+Railway builds the repository's `Dockerfile` when the service is connected to GitHub. Select the branch you intend to run; pushing commits to that linked branch triggers a deployment. Add a **persistent volume** to the bot service with this exact mount path:
 
-## Contributing
+```text
+/usr/src/app/.state
+```
 
-- Any Sort of Contributions are Welcomed!
-- Try To Resove Any Task From ToDo List Or Raise A Issue!
+The bot creates its own Fernet encryption key in that volume the first time the owner runs `/login`. Do not remove the volume or its key file: MongoDB stores only the encrypted Telegram user session, and the same volume is needed to decrypt it after redeploys. If that volume is lost, the saved encrypted session may no longer be usable and the owner must log in again after safely clearing/replacing the old session record.
 
-## How to deploy?
-<p><a href="https://www.youtube.com/live/hWf7DN3nN_c"> <img src="https://img.shields.io/badge/See%20Video-black?style=for-the-badge&logo=YouTube" width="160""/></a></p>
+### Environment variables
 
-### Fork Repo Then click on below button of ur fork repo.
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+Required:
 
-## Developer Note
+- `BOT_TOKEN` — token from @BotFather.
+- `MONGO_SRV` — MongoDB connection URI.
+- `OWNER` — numeric Telegram user ID. Only this ID can run `/login`, configure channels, and use admin callbacks.
 
-- If Hosted On Heroku Then Encoding Of Per Episode Will Take Around 20mins.
-- If You Don't Have High End VPS like 8vcpu or 32GiB RAM So Don't Deploy This Bot.
-- You Can Customize FFMPEG Code If You Know What You Are Doing.
+Optional:
 
-## Environmental Variable
+- `API_ID` and `API_HASH` — Telegram app credentials; upstream-compatible defaults are used when blank.
+- `SEND_SCHEDULE`, `RESTART_EVERDAY`, `THUMBNAIL`, `CRF`, `FFMPEG`, `LOG_ON_MAIN` — optional runtime settings.
 
-### REQUIRED VARIABLES
+Do **not** set `SESSION`, `SESSION_ENCRYPTION_KEY`, or channel-ID variables. The Telegram user session is created with `/login`; channel IDs are stored in MongoDB by bot commands. Old channel environment values, if present during the first start after updating, are migrated once into MongoDB.
 
-- `BOT_TOKEN` - Get This From @Botfather In Telegram.
+See [`.sample.env`](.sample.env) for the template. Never put real secrets in Git or in a Docker image.
 
-- `MONGO_SRV` - Get This From mongodb.com .
+## First run and owner login
 
-- `MAIN_CHANNEL` - ID of Channel Where Anime Will Upload.
+1. Set `BOT_TOKEN`, `MONGO_SRV`, and your numeric `OWNER` in Railway Variables.
+2. Attach the persistent volume at `/usr/src/app/.state` and deploy.
+3. Open the bot's private chat as the configured owner and send `/login`.
+4. Enter your Telegram phone number, OTP, and 2-step-verification password in that private conversation if requested. Input messages are deleted best-effort; do not share OTPs or passwords with anyone. The login is accepted only if the Telegram account ID matches `OWNER`.
+5. Use `/channels` and the commands below to configure destinations.
 
-- `CLOUD_CHANNEL` - ID of Channel Where Samples And Screenshots Of Anime Will Be Uploaded.
+The owner user session is encrypted before being stored in MongoDB. Its key is auto-generated, permission-restricted, and held on the persistent volume; no session string or encryption-key environment variable is required. The login command is owner-only and is not a public Telegram login service.
 
-- `LOG_CHANNEL` - ID of Channel Where Status Of Proccesses Will Be Shown.
+## Channel setup commands
 
-- `OWNER` - ID of Owner.
+Run these in a private chat with the bot as the configured owner:
 
-### OPTIONAL VARIABLES
+| Command | Purpose |
+|---|---|
+| `/channels` | Show current channel settings and help |
+| `/setchannel main -1001234567890` | Add a main destination; maximum 2 |
+| `/setchannel log -1001234567890` | Set the progress/error log channel |
+| `/setchannel backup -1001234567890` | Set the stored-file/backup channel |
+| `/setchannel cloud -1001234567890` | Set the sample and screenshot channel |
+| `/setchannel forcesub -1001234567890 temp` | Add a temporary-link force-sub channel; maximum 6 |
+| `/setchannel forcesub -1001234567890 fixed` | Add a reusable, non-expiring force-sub link |
+| `/unsetchannel main -1001234567890` | Remove one main channel |
+| `/unsetchannel main all` | Remove all main channels |
+| `/unsetchannel forcesub -1001234567890` | Remove one force-sub channel |
+| `/unsetchannel forcesub all` | Remove all force-sub channels |
+| `/unsetchannel log` / `backup` / `cloud` | Remove that destination |
 
-- `SESSION` - Telethon Session String Of Your Telegram Account.
+Use the channel's **negative numeric ID**. Add the bot as an administrator of every configured channel. Destination channels need post permission; force-sub channels need **Invite Users** permission so the bot can create join-request links. The bot starts or resumes its anime release watcher when at least one main channel is configured.
 
-- `BACKUP_CHANNEL` - ID of Channel Where Anime Will Be Saved As BackUP if You Are Using Button Upload Option Then Make Sure To SET Backup Channel.
+### Force-sub behavior
 
-- `FORCESUB_CHANNEL` - ID of Channel Where You Want The User To Join (Make Sure You Promoted The Bot in that channel).
+- Up to 6 force-sub channels are stored in MongoDB. On `/start`, the bot checks each separately and shows only the channels the user has not joined.
+- Both `temp` and `fixed` links are created in **join-request mode**. Channel administrators approve requests; after approval, the user can tap Refresh in the bot.
+- `temp` creates a per-user link that expires after 10 minutes. When another link is issued for that same user/channel, the prior link is revoked.
+- `fixed` reuses a join-request invite link that has no automatic expiry. Change the channel to `temp` if it should rotate and expire.
+- Since Telegram join requests require administrator approval, clicking the link does not immediately make the user a member. The bot will continue to show that channel until approval is complete.
 
-- `FORCESUB_CHANNEL_LINK` - Link of Channel Via User Join The `FORCESUB_CHANNEL`.
+## Anime and delivery behavior
 
-- `THUMBNAIL` - JPG/PNG Link of Thumbnail FIle.
+- Anime release polling and episode processing continue as before once a main channel is configured.
+- Episodes and posters are mirrored to both configured main channels (maximum 2). Daily airing schedule posts are also sent to both.
+- Button uploads require a backup channel. Samples/screenshots require a cloud channel; the bot skips that optional work if no cloud channel is configured.
+- A file delivered to a user's private chat through a bot deep link, including sample/screenshot delivery, is deleted after 10 minutes. Users should save or forward it before then.
+- Separate per-anime channel upload uses the logged-in owner session; run `/login` first.
 
-- `FFMPEG` - You Can Set Custom Path Of ffmpeg if u want, default is `ffmpeg`.
+## Other commands and panel
 
-- `LOG_ON_MAIN` - `True/False` It Will Send LOGS in `MAIN_CHANNEL` rather than `LOG_CHANNEL`, default is `False`
+- `/start` — open the bot or fetch a linked file.
+- `/about` — show bot and runtime information.
+- `/login` — owner-only Telegram user login.
+- `/channels`, `/setchannel`, `/unsetchannel` — owner-only channel management.
+- Admin-panel callbacks are also restricted to the configured owner.
+- `/cancel` is used while the broadcast conversation is active.
 
-- `SEND_SCHEDULE` - `True/False` Send Schedule of Upcoming Anime of that day at 00:30 **IST**, default is `False`.
+The bot starts with the existing MongoDB database name `ONGOINGANIME`; settings and encrypted session records are stored in separate collections/documents there.
 
-- `RESTART_EVERDAY` - `True/False` It Will Restart The Bot Everyday At 00:30 **IST**, default is `True`.
+## Local Docker
 
-- `DELETE_FILES_FROM_PMS` - `True/False` It Will delete the file from pm of user after 10mins if button upload is enabled. default is `True`.
+Build and run the image with the required environment variables, and bind a persistent host directory to `/usr/src/app/.state`. Do not run the container without persistent state if you need the owner session to survive restarts. On Railway, create the equivalent volume in the service settings rather than relying on container-local files.
 
-- `CRF` - Less CRF == High Quality, More Size , More CRF == Low Quality, Less Size, CRF Range = 20-51.
+```bash
+docker build -t autoanimebot .
+docker run -d --name autoanimebot --restart unless-stopped \
+  --env-file .env \
+  -v autoanimebot-state:/usr/src/app/.state \
+  autoanimebot
+```
 
-## Deployment In VPS
+## License
 
-- `git clone https://github.com/kaif-00z/AutoAnimeBot.git`
-
-- `nano .env` configure env as per [this](https://github.com/kaif-00z/AutoAnimeBot/blob/main/.sample.env) or  using [this](https://github.com/kaif-00z/AutoAnimeBot/blob/main/auto_env_gen.py).
-
-- `sudo docker build . -t ongoing` (make sure to install docker first using `sudo apt install docker.io`)
-
-- `sudo docker run ongoing`
-
-## Commands
-
-[![Comand](https://files.catbox.moe/utcf3f.jpg)](https://github.com/kaif-00z/AutoAnimeBot/)
-
-**Uploading of Ongoing Animes Is Automatic**
-
-<!-- ## About
-
-- This Bot Is Currently Running In [This Channel](https://t.me/+q_OBZiXjkBFkYzk0) . -->
-
-## Donate
-
-- [Contact me on Telegram](t.me/kaif_00z) if you would like to donate me for my work!
+GPLv3. See [`LICENSE`](LICENSE). This fork preserves the original project attribution.

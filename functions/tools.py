@@ -237,12 +237,14 @@ class Tools:
             return False, "Unable to Count The Frames!"
         _progress = f"progress-{time.time()}.txt"
         cmd = f'''{
-            Var.FFMPEG} -hide_banner -loglevel quiet -progress """{_progress}""" -i """{dl}""" -metadata "Encoded By"="https://github.com/kaif-00z/AutoAnimeBot/" -preset ultrafast -c:v libx265 -crf {
+            Var.FFMPEG} -hide_banner -loglevel quiet -progress """{_progress}""" -i """{dl}""" -metadata "Encoded By"="https://github.com/chalbemodi-coder/Auto/" -preset ultrafast -c:v libx265 -crf {
             Var.CRF} -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -map 0:v -c:a aac -map 0:a -c:s copy -map 0:s? """{out}""" -y'''
         process = await asyncio.create_subprocess_shell(
             cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         d_time = time.time()
+        _new_log_msg = log_msg
+        elapse = 0
         while process.returncode != 0:
             await asyncio.sleep(5)
 
@@ -290,12 +292,13 @@ class Tools:
                 )
                 e_size = f"{self.hbs(size)} of ~{self.hbs((size / per) * 100)}"
                 eta = f"~{self.ts(some_eta)}"
-                try:
-                    _new_log_msg = await log_msg.edit(
-                        text + progress_str + "`" + e_size + "`" + "\n\n`" + eta + "`"
-                    )
-                except MessageNotModifiedError:
-                    pass
+                if log_msg:
+                    try:
+                        _new_log_msg = await log_msg.edit(
+                            text + progress_str + "`" + e_size + "`" + "\n\n`" + eta + "`"
+                        )
+                    except MessageNotModifiedError:
+                        pass
         try:
             os.remove(_progress)
         except BaseException:

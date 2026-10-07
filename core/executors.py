@@ -50,6 +50,7 @@ class Executors:
         self.db = dB
         self.reporter = reporter
         self.msg_id = None
+        self.message_refs = []
         self.output_file = None
 
     async def execute(self):
@@ -76,20 +77,25 @@ class Executors:
 
             await self.reporter.started_uploading()
             if self.is_button:
-                msg = await self.bot.upload_anime(
+                messages = await self.bot.upload_anime(
                     self.output_file, rename, thumb or "thumb.jpg", is_button=True
                 )
+                msg = messages[0]
                 btn = Button.url(
                     f"{self.anime_info.data.get('video_resolution')}",
                     url=f"https://t.me/{((await self.bot.get_me()).username)}?start={msg.id}",
                 )
                 self.msg_id = msg.id
+                self.message_refs = [(Var.BACKUP_CHANNEL, message.id) for message in messages]
                 return True, btn
 
-            msg = await self.bot.upload_anime(
+            messages = await self.bot.upload_anime(
                 self.output_file, rename, thumb or "thumb.jpg"
             )
-            self.msg_id = msg.id
+            self.msg_id = messages[0].id
+            self.message_refs = [
+                (message.chat.id, message.id) for message in messages
+            ]
             return True, []
 
         except BaseException:
@@ -97,16 +103,11 @@ class Executors:
             return False, str(format_exc())
 
     async def further_work(self):
-
-        if not await self.db.is_ss_upload():
-            return await self.reporter.all_done()
-
         try:
+            if not await self.db.is_ss_upload() or not Var.CLOUD_CHANNEL:
+                await self.reporter.all_done()
+                return
             await self.reporter.started_gen_ss()
-            msg = await self.bot.get_messages(
-                Var.BACKUP_CHANNEL if self.is_button else Var.MAIN_CHANNEL,
-                ids=self.msg_id,
-            )
             btns = [[]]
 
             link_info = await self.tools.mediainfo(self.output_file, self.bot)
@@ -137,7 +138,16 @@ class Executors:
                     ]
                 )
 
-            await msg.edit(buttons=btns)
+            refs = self.message_refs or [
+                (
+                    Var.BACKUP_CHANNEL if self.is_button else Var.MAIN_CHANNEL,
+                    self.msg_id,
+                )
+            ]
+            for channel_id, message_id in refs:
+                msg = await self.bot.get_messages(channel_id, ids=message_id)
+                if msg:
+                    await msg.edit(buttons=btns)
             await self.reporter.all_done()
 
         except BaseException:

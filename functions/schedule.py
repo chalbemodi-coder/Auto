@@ -45,6 +45,12 @@ class ScheduleTasks:
 
     async def anime_timing(self):
         try:
+            channels = list(Var.MAIN_CHANNELS)
+            if not channels and Var.MAIN_CHANNEL:
+                channels = [Var.MAIN_CHANNEL]
+            if not channels:
+                LOGS.warning("Skipping anime schedule post: no main channel is configured.")
+                return
             _res = await self.tools.async_searcher(
                 "https://subsplease.org/api/?f=schedule&h=true&tz=Asia/Kolkata"
             )
@@ -54,8 +60,12 @@ class ScheduleTasks:
             for i in xxx:
                 info = AnimeInfo(i["title"])
                 text += f'`[{i["time"]}]` -  [{(await info.get_english())}](https://subsplease.org/shows/{i["page"]})\n'
-            mssg = await self.bot.send_message(Var.MAIN_CHANNEL, text)
-            await mssg.pin(notify=True)
+            for channel_id in channels:
+                try:
+                    message = await self.bot.send_message(channel_id, text)
+                    await message.pin(notify=True)
+                except Exception as error:
+                    LOGS.error(f"Could not post anime schedule to {channel_id}: {error}")
         except Exception as error:
             LOGS.error(str(error))
 

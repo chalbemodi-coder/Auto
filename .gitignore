@@ -1,3 +1,11 @@
 .env
+.env.*
+!.sample.env
+.state/
 __pycache__/
-test.py
+*.py[cod]
+AutoAnimeBot.log
+thumb.jpg
+thumbs/
+downloads/
+encode/

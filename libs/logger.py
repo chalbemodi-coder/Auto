@@ -40,8 +40,9 @@ TelethonLogger.setLevel(logging.INFO)
 
 LOGS.info(f"""
                             Auto Anime Bot
-                ©️ t.me/kAiF_00z (github.com/kaif-00z)
-                        {Var.__version__} (original)
+                Maintainer: @ahjin_anime
+                Based on AutoAnimeBot by Kaif_00z
+                        {Var.__version__}
                              (2023-26)
                         [All Rigths Reserved]
 
@@ -56,34 +57,49 @@ class Reporter:
 
     async def alert_new_file_founded(self):
         await self.awake()
-        msg = await self.client.send_message(
-            Var.MAIN_CHANNEL if Var.LOG_ON_MAIN else Var.LOG_CHANNEL,
+        main_channels = list(Var.MAIN_CHANNELS)
+        destination = (
+            (main_channels[0] if main_channels else Var.LOG_CHANNEL)
+            if Var.LOG_ON_MAIN
+            else Var.LOG_CHANNEL
+        )
+        if not destination:
+            self.msg = None
+            LOGS.info(f"New anime found: {self.file_name}")
+            return
+        self.msg = await self.client.send_message(
+            destination,
             f"**New Anime Released**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Downloading...`",
         )
-        self.msg = msg
 
     async def started_compressing(self):
-        self.msg = await self.msg.edit(
-            f"**Successfully Downloaded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Encoding...`",
-        )
+        if self.msg:
+            self.msg = await self.msg.edit(
+                f"**Successfully Downloaded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Encoding...`",
+            )
         return self.msg
 
     async def started_renaming(self):
-        self.msg = await self.msg.edit(
-            f"**Successfully Downloaded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Renaming...`",
-        )
+        if self.msg:
+            self.msg = await self.msg.edit(
+                f"**Successfully Downloaded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Renaming...`",
+            )
 
     async def started_uploading(self):
-        self.msg = await self.msg.edit(
-            f"**Successfully Encoded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Uploading...`"
-        )
+        if self.msg:
+            self.msg = await self.msg.edit(
+                f"**Successfully Encoded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Uploading...`"
+            )
 
     async def started_gen_ss(self):
-        self.msg = await self.msg.edit(
-            f"**Successfully Uploaded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Generating Sample And Screen Shot...`"
-        )
+        if self.msg:
+            self.msg = await self.msg.edit(
+                f"**Successfully Uploaded The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `Generating Sample And Screen Shot...`"
+            )
 
     async def all_done(self):
+        if not self.msg:
+            return
         try:
             self.msg = await self.msg.edit(
                 f"**Successfully Completed All Task Related To The Anime**\n\n **File Name:** ```{self.file_name}```\n\n**STATUS:** `DONE`"
@@ -100,7 +116,9 @@ class Reporter:
     async def report_error(self, msg, log=False):
         txt = f"[ERROR] {msg}"
         if log:
-            LOGS.error(txt[0])
+            LOGS.error(txt)
+        if not Var.LOG_CHANNEL:
+            return
         try:
             await self.client.send_message(Var.LOG_CHANNEL, f"```{txt[:4096]}```")
         except FloodWaitError as fwerr:

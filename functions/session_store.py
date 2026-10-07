@@ -11,7 +11,19 @@ DEFAULT_STATE_DIR = Path(os.environ.get("SESSION_STATE_DIR", ".state"))
 KEY_FILENAME = "session-encryption.key"
 
 
-def _is_persistent_mount(state_dir: Path) -> bool:
+def _decode_mountinfo_path(value: str) -> str:
+    """Decode the octal escapes used for paths in /proc/self/mountinfo."""
+    return (
+        value.replace(r"\040", " ")
+        .replace(r"\011", "\t")
+        .replace(r"\012", "\n")
+        .replace(r"\134", "\\")
+    )
+
+
+def _is_persistent_mount(
+    state_dir: Path, *, mountinfo_text: str | None = None
+) -> bool:
     """Fail closed unless the state directory is on an attached persistent volume."""
     mount_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
     if mount_path:
@@ -19,6 +31,26 @@ def _is_persistent_mount(state_dir: Path) -> bool:
             return Path(mount_path).resolve() == state_dir.resolve()
         except OSError:
             return False
+
+    # os.path.ismount() can miss Docker bind mounts when source and container
+    # paths are on the same filesystem. Linux mountinfo records bind mounts too.
+    if mountinfo_text is None:
+        try:
+            mountinfo_text = Path("/proc/self/mountinfo").read_text(encoding="utf-8")
+        except OSError:
+            mountinfo_text = ""
+
+    try:
+        target = state_dir.resolve()
+        for line in mountinfo_text.splitlines():
+            fields = line.split()
+            if len(fields) < 5:
+                continue
+            mountpoint = Path(_decode_mountinfo_path(fields[4])).resolve()
+            if mountpoint == target:
+                return True
+    except OSError:
+        return False
     return os.path.ismount(str(state_dir))
 
 

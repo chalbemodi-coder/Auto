@@ -239,15 +239,7 @@ async def _start(event):
             return
         await xnx.edit(
             "**Enjoy ongoing anime releases and episodes.**",
-            buttons=[
-                [
-                    Button.url("👨‍💻 DEV", url="https://t.me/ahjin_anime"),
-                    Button.url(
-                        "💖 OPEN SOURCE",
-                        url="https://github.com/chalbemodi-coder/Auto",
-                    ),
-                ]
-            ],
+            buttons=[[Button.url("👨‍💻 DEV", url="https://t.me/ahjin_anime")]],
         )
         return
     await xnx.delete()

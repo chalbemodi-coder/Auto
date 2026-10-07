@@ -272,7 +272,7 @@ async def _login(event):
     except Exception as error:
         LOGS.error(f"Session storage is not ready: {error}")
         return await event.reply(
-            "Secure session storage is not ready. Attach a writable persistent volume on the server running this bot at `/usr/src/app/.state`, restart it, then retry `/login`."
+            "Secure session storage is not ready. Attach a writable persistent volume at `/usr/src/app/.state` or set a valid protected `SESSION_ENCRYPTION_KEY` secret, restart the bot, then retry `/login`."
         )
 
     login_client = TelegramClient(

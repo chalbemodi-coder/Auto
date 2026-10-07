@@ -12,7 +12,7 @@ Railway builds the repository's `Dockerfile` when the service is connected to Gi
 /usr/src/app/.state
 ```
 
-The bot creates its own Fernet encryption key in that volume the first time the owner runs `/login`. Do not remove the volume or its key file: MongoDB stores only the encrypted Telegram user session, and the same volume is needed to decrypt it after redeploys. If that volume is lost, the saved encrypted session may no longer be usable and the owner must log in again after safely clearing/replacing the old session record.
+By default, the bot creates its own Fernet encryption key in that volume the first time the owner runs `/login`. Do not remove the volume or its key file: MongoDB stores only the encrypted Telegram user session, and the same volume is needed to decrypt it after redeploys. If the host cannot provide persistent storage, set the optional `SESSION_ENCRYPTION_KEY` as a protected host secret instead. Use the same key on every redeploy/host that must decrypt the MongoDB session; never commit it or put it in chat.
 
 ### Environment variables
 
@@ -25,21 +25,22 @@ Required:
 Optional:
 
 - `API_ID` and `API_HASH` — Telegram app credentials; upstream-compatible defaults are used when blank.
+- `SESSION_ENCRYPTION_KEY` — optional secure alternative to a persistent volume for the session-encryption key. Leave blank when using the volume; if used, keep the exact same Fernet key across restarts and host changes.
 - `SEND_SCHEDULE`, `RESTART_EVERDAY`, `THUMBNAIL`, `CRF`, `FFMPEG`, `LOG_ON_MAIN` — optional runtime settings.
 
-Do **not** set `SESSION`, `SESSION_ENCRYPTION_KEY`, or channel-ID variables. The Telegram user session is created with `/login`; channel IDs are stored in MongoDB by bot commands. Old channel environment values, if present during the first start after updating, are migrated once into MongoDB.
+Do **not** set `SESSION` or channel-ID variables. The Telegram user session is created with `/login`; channel IDs are stored in MongoDB by bot commands. Old channel environment values, if present during the first start after updating, are migrated once into MongoDB.
 
 See [`.sample.env`](.sample.env) for the template. Never put real secrets in Git or in a Docker image.
 
 ## First run and owner login
 
 1. Set `BOT_TOKEN`, `MONGO_SRV`, and your numeric `OWNER` in Railway Variables.
-2. Attach the persistent volume at `/usr/src/app/.state` and deploy.
+2. Either attach persistent storage at `/usr/src/app/.state`, or set `SESSION_ENCRYPTION_KEY` as a protected host secret, then deploy.
 3. Open the bot's private chat as the configured owner and send `/login`.
 4. Enter your Telegram phone number, OTP, and 2-step-verification password in that private conversation if requested. Input messages are deleted best-effort; do not share OTPs or passwords with anyone. The login is accepted only if the Telegram account ID matches `OWNER`.
 5. Use `/channels` and the commands below to configure destinations.
 
-The owner user session is encrypted before being stored in MongoDB. Its key is auto-generated, permission-restricted, and held on the persistent volume; no session string or encryption-key environment variable is required. The login command is owner-only and is not a public Telegram login service.
+The owner user session is encrypted before being stored in MongoDB. The key is either auto-generated with restrictive file permissions on the persistent volume or supplied as the optional protected `SESSION_ENCRYPTION_KEY` secret. The login command is owner-only and is not a public Telegram login service.
 
 ## Channel setup commands
 

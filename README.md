@@ -4,15 +4,13 @@ Telegram bot that watches ongoing anime releases, encodes and posts episodes, an
 
 This repository is a fork of [AutoAnimeBot](https://github.com/kaif-00z/AutoAnimeBot). It retains the upstream GPLv3 license and required source attribution.
 
-## Deploy on Railway
+## Docker deployment
 
-Railway builds the repository's `Dockerfile` when the service is connected to GitHub. Select the branch you intend to run; pushing commits to that linked branch triggers a deployment. Add a **persistent volume** to the bot service with this exact mount path:
+The host can build the repository's `Dockerfile` from GitHub or you can build it on a Docker server. The owner Telegram session is stored directly as plain text in MongoDB; no persistent volume or `SESSION_ENCRYPTION_KEY` is required for login.
 
-```text
-/usr/src/app/.state
-```
+**Security warning:** anyone with read access to the MongoDB session document can use that session to access the Telegram account without its OTP or 2FA password. Use a dedicated MongoDB database/user with a strong password, restrict network access to trusted hosts, do not expose database credentials or backups, and do not share the session or MongoDB access. This is an intentional security downgrade from encrypted session storage.
 
-By default, the bot creates its own Fernet encryption key in that volume the first time the owner runs `/login`. Do not remove the volume or its key file: MongoDB stores only the encrypted Telegram user session, and the same volume is needed to decrypt it after redeploys. If the host cannot provide persistent storage, set the optional `SESSION_ENCRYPTION_KEY` as a protected host secret instead. Use the same key on every redeploy/host that must decrypt the MongoDB session; never commit it or put it in chat.
+Older records saved by a previous encrypted version are migrated when their original key is available. If that key was lost, run `/login` again; the new owner session will replace the old record.
 
 ### Environment variables
 
@@ -25,7 +23,6 @@ Required:
 Optional:
 
 - `API_ID` and `API_HASH` — Telegram app credentials; upstream-compatible defaults are used when blank.
-- `SESSION_ENCRYPTION_KEY` — optional secure alternative to a persistent volume for the session-encryption key. Leave blank when using the volume; if used, keep the exact same Fernet key across restarts and host changes.
 - `SEND_SCHEDULE`, `RESTART_EVERDAY`, `THUMBNAIL`, `CRF`, `FFMPEG`, `LOG_ON_MAIN` — optional runtime settings.
 
 Do **not** set `SESSION` or channel-ID variables. The Telegram user session is created with `/login`; channel IDs are stored in MongoDB by bot commands. Old channel environment values, if present during the first start after updating, are migrated once into MongoDB.
@@ -34,13 +31,13 @@ See [`.sample.env`](.sample.env) for the template. Never put real secrets in Git
 
 ## First run and owner login
 
-1. Set `BOT_TOKEN`, `MONGO_SRV`, and your numeric `OWNER` in Railway Variables.
-2. Either attach persistent storage at `/usr/src/app/.state`, or set `SESSION_ENCRYPTION_KEY` as a protected host secret, then deploy.
+1. Set `BOT_TOKEN`, `MONGO_SRV`, and your numeric `OWNER` in the host's Variables/Secrets.
+2. Deploy the Docker image; session storage does not need a mounted volume or encryption-key variable.
 3. Open the bot's private chat as the configured owner and send `/login`.
 4. Enter your Telegram phone number, OTP, and 2-step-verification password in that private conversation if requested. Input messages are deleted best-effort; do not share OTPs or passwords with anyone. The login is accepted only if the Telegram account ID matches `OWNER`.
 5. Use `/channels` and the commands below to configure destinations.
 
-The owner user session is encrypted before being stored in MongoDB. The key is either auto-generated with restrictive file permissions on the persistent volume or supplied as the optional protected `SESSION_ENCRYPTION_KEY` secret. The login command is owner-only and is not a public Telegram login service.
+The owner user session is stored unencrypted in MongoDB at the owner's explicit request. The `/login` command remains owner-only and still verifies that the logged-in Telegram account ID matches `OWNER`.
 
 ## Channel setup commands
 

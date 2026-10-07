@@ -12,7 +12,7 @@ from traceback import format_exc
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from functions.config import Var
-from functions.session_store import decrypt_session, encrypt_session
+from functions.session_store import decrypt_session
 from libs.logger import LOGS
 
 
@@ -259,23 +259,45 @@ class DataBase:
         return docs
 
     async def save_user_session(self, session_string):
-        encrypted = encrypt_session(session_string)
+        session_string = str(session_string or "")
+        if not session_string:
+            raise ValueError("Refusing to save an empty Telegram session.")
         await self.user_session_db.update_one(
             {"_id": OWNER_SESSION_ID},
             {
                 "$set": {
-                    "encrypted_session": encrypted,
+                    "session_string": session_string,
                     "updated_at": datetime.now(timezone.utc),
-                }
+                },
+                "$unset": {"encrypted_session": ""},
             },
             upsert=True,
         )
 
     async def get_user_session(self):
         data = await self.user_session_db.find_one({"_id": OWNER_SESSION_ID})
-        if not data or not data.get("encrypted_session"):
+        if not data:
             return None
-        return decrypt_session(data["encrypted_session"])
+        session_string = data.get("session_string")
+        if session_string:
+            return str(session_string)
+
+        # Read and migrate an older encrypted record when its previous key is available.
+        encrypted = data.get("encrypted_session")
+        if not encrypted:
+            return None
+        session_string = decrypt_session(encrypted)
+        await self.user_session_db.update_one(
+            {"_id": OWNER_SESSION_ID},
+            {
+                "$set": {
+                    "session_string": session_string,
+                    "updated_at": datetime.now(timezone.utc),
+                },
+                "$unset": {"encrypted_session": ""},
+            },
+        )
+        return session_string
 
     async def clear_user_session(self):
         await self.user_session_db.delete_one({"_id": OWNER_SESSION_ID})

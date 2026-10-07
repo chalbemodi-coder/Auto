@@ -25,7 +25,6 @@ from database import DataBase
 from functions.config import Var
 from functions.info import AnimeInfo
 from functions.schedule import ScheduleTasks
-from functions.session_store import get_or_create_key
 from functions.tools import Tools
 from functions.utils import AdminUtils
 from libs.ariawarp import Torrent
@@ -47,7 +46,7 @@ async def _restore_user_session():
             await bot.attach_user_session(session_string)
     except Exception as error:
         # Keep the bot running so the owner can authenticate again with /login.
-        LOGS.error(f"Could not restore encrypted owner session: {error}")
+        LOGS.error(f"Could not restore owner Telegram session: {error}")
 
 
 bot.run_in_loop(_restore_user_session())
@@ -267,14 +266,6 @@ async def _login(event):
         except Exception:
             pass
 
-    try:
-        get_or_create_key()
-    except Exception as error:
-        LOGS.error(f"Session storage is not ready: {error}")
-        return await event.reply(
-            "Secure session storage is not ready. Attach a writable persistent volume at `/usr/src/app/.state` or set a valid protected `SESSION_ENCRYPTION_KEY` secret, restart the bot, then retry `/login`."
-        )
-
     login_client = TelegramClient(
         StringSession(), Var.API_ID, Var.API_HASH
     )
@@ -360,7 +351,7 @@ async def _login(event):
             login_completed = True
             LOGS.info(f"Owner Telegram session authorized for numeric owner ID {Var.OWNER}.")
             return await event.reply(
-                "Telegram login succeeded. The session was encrypted in MongoDB; the encryption key is stored on the persistent volume."
+                "Telegram login succeeded. The session is saved as plain text in MongoDB without encryption. Restrict database access."
             )
     except TimeoutError:
         return await event.reply("Login timed out. Run `/login` again when ready.")

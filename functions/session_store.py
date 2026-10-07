@@ -1,4 +1,4 @@
-"""Encrypt Telegram user sessions with a persistent-volume or secret-store Fernet key."""
+"""Compatibility helpers for reading older encrypted Telegram session records."""
 
 import os
 import tempfile
@@ -79,8 +79,8 @@ def get_or_create_key(key_path: str | Path | None = None, *, require_persistent:
 
     if require_persistent and not _is_persistent_mount(state_dir):
         raise RuntimeError(
-            "Persistent storage is not mounted at /usr/src/app/.state. "
-            "Attach a Railway volume there before using /login."
+            "The legacy encrypted session needs its original persistent key or "
+            "SESSION_ENCRYPTION_KEY; authenticate again with /login if that key is unavailable."
         )
 
     if not path.exists():

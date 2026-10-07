@@ -1,4 +1,4 @@
-"""Encrypt Telegram user sessions with a locally generated persistent Fernet key."""
+"""Encrypt Telegram user sessions with a persistent-volume or secret-store Fernet key."""
 
 import os
 import tempfile
@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 DEFAULT_STATE_DIR = Path(os.environ.get("SESSION_STATE_DIR", ".state"))
 KEY_FILENAME = "session-encryption.key"
+ENV_KEY_NAME = "SESSION_ENCRYPTION_KEY"
 
 
 def _decode_mountinfo_path(value: str) -> str:
@@ -54,7 +55,25 @@ def _is_persistent_mount(
     return os.path.ismount(str(state_dir))
 
 
+def _get_environment_key() -> bytes | None:
+    raw_key = os.environ.get(ENV_KEY_NAME, "").strip()
+    if not raw_key:
+        return None
+    try:
+        key = raw_key.encode("ascii")
+        Fernet(key)
+    except (UnicodeEncodeError, TypeError, ValueError) as error:
+        raise RuntimeError(
+            f"{ENV_KEY_NAME} is invalid; set a valid Fernet key and keep it unchanged."
+        ) from error
+    return key
+
+
 def get_or_create_key(key_path: str | Path | None = None, *, require_persistent: bool = True) -> bytes:
+    environment_key = _get_environment_key()
+    if environment_key is not None:
+        return environment_key
+
     path = Path(key_path) if key_path else DEFAULT_STATE_DIR / KEY_FILENAME
     state_dir = path.parent
 

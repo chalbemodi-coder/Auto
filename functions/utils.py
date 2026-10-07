@@ -40,7 +40,7 @@ ABOUT = """
 • **💻 Server**: `{}`
 • **📖 Source Code** : {}
 
-~ **Developer**  __@Kaif_00z __
+~ **Developer**  __@ahjin_anime __
 """
 
 
@@ -67,6 +67,7 @@ class AdminUtils:
             ],
             [Button.inline("🔘 Button Upload [Toogle]", data="butg")],
             [Button.inline("🗃️ Separate Channel Upload [Toogle]", data="scul")],
+            [Button.inline("📡 Channel Setup", data="channels")],
             [Button.inline("🔊 Broadcast", data="cast")],
         ]
         return btn
@@ -124,7 +125,7 @@ class AdminUtils:
             )
 
     async def _sep_c_t(self, e):
-        if Var.SESSION:
+        if self.bot.user_client and self.bot.user_client.is_connected():
             if await self.db.is_button_upload():
                 if await self.db.is_separate_channel_upload():
                     await self.db.toggle_separate_channel_upload()
@@ -144,7 +145,7 @@ class AdminUtils:
                 )
         else:
             return await e.edit(
-                "`To Use The Separate Channel Upload First You Have To Add SESSION Variable in The Bot",
+                "`To use separate channel upload, first log in with /login as the configured owner.",
                 buttons=self.back_btn(),
             )
 
@@ -189,6 +190,6 @@ class AdminUtils:
             self.telethon_version,
             self.pyrogram_version,
             self.system,
-            "[OngoingAnimeBot](https://github.com/Kaif-00z/AutoAnimeBot)",
+            "[Auto](https://github.com/chalbemodi-coder/Auto)",
         )
         await e.reply(text, file="assest/about.jpg", link_preview=False)

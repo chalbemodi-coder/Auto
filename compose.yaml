@@ -1,0 +1,16 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autoanimebot:latest
+    container_name: autoanimebot
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

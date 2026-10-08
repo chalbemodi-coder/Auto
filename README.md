@@ -85,19 +85,20 @@ Use the channel's **negative numeric ID**. Add the bot as an administrator of ev
 - Admin-panel callbacks are also restricted to the configured owner.
 - `/cancel` is used while the broadcast conversation is active.
 
-The bot starts with the existing MongoDB database name `ONGOINGANIME`; settings and encrypted session records are stored in separate collections/documents there.
+The bot starts with the existing MongoDB database name `ONGOINGANIME`; settings and the owner session are stored in MongoDB. The current version stores the session as plain text, as noted in the security warning above.
 
 ## Local Docker
 
-Build and run the image with the required environment variables, and bind a persistent host directory to `/usr/src/app/.state`. Do not run the container without persistent state if you need the owner session to survive restarts. On Railway, create the equivalent volume in the service settings rather than relying on container-local files.
+Copy `.sample.env` to `.env`, fill in `BOT_TOKEN`, `MONGO_SRV`, and numeric `OWNER`, then build and start the bot with Docker Compose. Session and channel settings are stored in MongoDB, so this version does not need a `.state` volume or `SESSION_ENCRYPTION_KEY`. The `.env` file is supplied at runtime and is excluded from the image.
 
 ```bash
-docker build -t autoanimebot .
-docker run -d --name autoanimebot --restart unless-stopped \
-  --env-file .env \
-  -v autoanimebot-state:/usr/src/app/.state \
-  autoanimebot
+cp .sample.env .env
+# Edit .env with your own values, then:
+docker compose up -d --build
+docker compose logs -f bot
 ```
+
+Stop the container with `docker compose down`. Run only one live instance for a given `BOT_TOKEN`; stop the old host deployment before starting another copy against the same bot/database.
 
 ## License
 

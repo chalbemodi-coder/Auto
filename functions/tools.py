@@ -282,9 +282,12 @@ class Tools:
                 speed = round(elapse / time_diff, 2)
             if int(speed) != 0:
                 some_eta = ((int(total_frames) - elapse) / speed) * 1000
-                text = f"**Successfully Downloaded The Anime**\n\n **File Name:** ```{
-                    dl.split('/')[
-                        -1]}```\n\n**STATUS:** \n"
+                file_name = dl.rsplit("/", 1)[-1]
+                text = (
+                    f"**Successfully Downloaded The Anime**\n\n"
+                    f"**File Name:** ```{file_name}```\n\n"
+                    f"**STATUS:** \n"
+                )
                 progress_str = "`[{0}{1}] {2}%\n\n`".format(
                     "".join("●" for _ in range(math.floor(per / 5))),
                     "".join("" for _ in range(20 - math.floor(per / 5))),

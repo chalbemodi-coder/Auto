@@ -6,11 +6,11 @@ This repository is a fork of [AutoAnimeBot](https://github.com/kaif-00z/AutoAnim
 
 ## Docker deployment
 
-The host can build the repository's `Dockerfile` from GitHub or you can build it on a Docker server. The owner Telegram session is stored directly as plain text in MongoDB; no persistent volume or `SESSION_ENCRYPTION_KEY` is required for login.
+The host can build the repository's `Dockerfile` from GitHub or you can build it on a Docker server. The owner Telegram session is encrypted with Fernet before it is stored in MongoDB. `SESSION_ENCRYPTION_KEY` must be configured as a host secret or in the local `.env` file; do not commit it or bake it into an image.
 
-**Security warning:** anyone with read access to the MongoDB session document can use that session to access the Telegram account without its OTP or 2FA password. Use a dedicated MongoDB database/user with a strong password, restrict network access to trusted hosts, do not expose database credentials or backups, and do not share the session or MongoDB access. This is an intentional security downgrade from encrypted session storage.
+**Security warning:** protect both MongoDB access and `SESSION_ENCRYPTION_KEY`. Anyone who obtains the encrypted session and its key can use that session to access the Telegram account without its OTP or 2FA password. Use a dedicated MongoDB database/user with a strong password, restrict network access to trusted hosts, keep a secure backup of the key, and do not share it.
 
-Older records saved by a previous encrypted version are migrated when their original key is available. If that key was lost, run `/login` again; the new owner session will replace the old record.
+Existing plaintext session records are encrypted and the plaintext field removed the next time the bot restores the session, provided the key is configured. Older encrypted records require their original key; if it is unavailable, set a new key and run `/login` again.
 
 ### Environment variables
 
@@ -18,6 +18,7 @@ Required:
 
 - `BOT_TOKEN` — token from @BotFather.
 - `MONGO_SRV` — MongoDB connection URI.
+- `SESSION_ENCRYPTION_KEY` — a valid Fernet key used to encrypt the owner session in MongoDB. Generate it once and keep it unchanged/backed up.
 - `OWNER` — numeric Telegram user ID. Only this ID can run `/login`, configure channels, and use admin callbacks.
 
 Optional:
@@ -25,19 +26,30 @@ Optional:
 - `API_ID` and `API_HASH` — Telegram app credentials; upstream-compatible defaults are used when blank.
 - `SEND_SCHEDULE`, `RESTART_EVERDAY`, `THUMBNAIL`, `CRF`, `FFMPEG`, `LOG_ON_MAIN` — optional runtime settings.
 
-Do **not** set `SESSION` or channel-ID variables. The Telegram user session is created with `/login`; channel IDs are stored in MongoDB by bot commands. Old channel environment values, if present during the first start after updating, are migrated once into MongoDB.
+Generate the Fernet key once in Windows PowerShell, then put its output in your host's private Variables/Secrets or local `.env` (never in GitHub):
+
+```powershell
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$key = [Convert]::ToBase64String($bytes).Replace('+','-').Replace('/','_')
+$rng.Dispose()
+$key
+```
+
+Do **not** set `SESSION` or channel-ID variables. The Telegram user session is created with `/login`, encrypted using `SESSION_ENCRYPTION_KEY`, and stored in MongoDB; channel IDs are stored there by bot commands. Old channel environment values, if present during the first start after updating, are migrated once into MongoDB.
 
 See [`.sample.env`](.sample.env) for the template. Never put real secrets in Git or in a Docker image.
 
 ## First run and owner login
 
-1. Set `BOT_TOKEN`, `MONGO_SRV`, and your numeric `OWNER` in the host's Variables/Secrets.
-2. Deploy the Docker image; session storage does not need a mounted volume or encryption-key variable.
+1. Set `BOT_TOKEN`, `MONGO_SRV`, `SESSION_ENCRYPTION_KEY`, and your numeric `OWNER` in the host's Variables/Secrets.
+2. Deploy the Docker image; session data is encrypted before MongoDB storage, and the key is injected at runtime rather than stored in the image.
 3. Open the bot's private chat as the configured owner and send `/login`.
 4. Enter your Telegram phone number, OTP, and 2-step-verification password in that private conversation if requested. Input messages are deleted best-effort; do not share OTPs or passwords with anyone. The login is accepted only if the Telegram account ID matches `OWNER`.
 5. Use `/channels` and the commands below to configure destinations.
 
-The owner user session is stored unencrypted in MongoDB at the owner's explicit request. The `/login` command remains owner-only and still verifies that the logged-in Telegram account ID matches `OWNER`.
+The owner user session is encrypted in MongoDB using `SESSION_ENCRYPTION_KEY`. The `/login` command remains owner-only and still verifies that the logged-in Telegram account ID matches `OWNER`.
 
 ## Channel setup commands
 
@@ -85,11 +97,11 @@ Use the channel's **negative numeric ID**. Add the bot as an administrator of ev
 - Admin-panel callbacks are also restricted to the configured owner.
 - `/cancel` is used while the broadcast conversation is active.
 
-The bot starts with the existing MongoDB database name `ONGOINGANIME`; settings and the owner session are stored in MongoDB. The current version stores the session as plain text, as noted in the security warning above.
+The bot starts with the existing MongoDB database name `ONGOINGANIME`; settings and the encrypted owner session are stored in MongoDB.
 
 ## Local Docker
 
-Copy `.sample.env` to `.env`, fill in `BOT_TOKEN`, `MONGO_SRV`, and numeric `OWNER`, then build and start the bot with Docker Compose. Session and channel settings are stored in MongoDB, so this version does not need a `.state` volume or `SESSION_ENCRYPTION_KEY`. The `.env` file is supplied at runtime and is excluded from the image.
+Copy `.sample.env` to `.env`, fill in `BOT_TOKEN`, `MONGO_SRV`, `SESSION_ENCRYPTION_KEY`, and numeric `OWNER`, then build and start the bot with Docker Compose. Session and channel settings are stored in MongoDB, so no `.state` volume is needed. The `.env` file is supplied at runtime and is excluded from the image.
 
 ```bash
 cp .sample.env .env

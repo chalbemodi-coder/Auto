@@ -12,7 +12,7 @@ from traceback import format_exc
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from functions.config import Var
-from functions.session_store import decrypt_session
+from functions.session_store import decrypt_session, encrypt_session
 from libs.logger import LOGS
 
 
@@ -262,14 +262,15 @@ class DataBase:
         session_string = str(session_string or "")
         if not session_string:
             raise ValueError("Refusing to save an empty Telegram session.")
+        encrypted_session = encrypt_session(session_string)
         await self.user_session_db.update_one(
             {"_id": OWNER_SESSION_ID},
             {
                 "$set": {
-                    "session_string": session_string,
+                    "encrypted_session": encrypted_session,
                     "updated_at": datetime.now(timezone.utc),
                 },
-                "$unset": {"encrypted_session": ""},
+                "$unset": {"session_string": ""},
             },
             upsert=True,
         )
@@ -278,23 +279,30 @@ class DataBase:
         data = await self.user_session_db.find_one({"_id": OWNER_SESSION_ID})
         if not data:
             return None
-        session_string = data.get("session_string")
-        if session_string:
-            return str(session_string)
-
-        # Read and migrate an older encrypted record when its previous key is available.
         encrypted = data.get("encrypted_session")
-        if not encrypted:
+        if encrypted:
+            session_string = decrypt_session(encrypted)
+            if data.get("session_string"):
+                await self.user_session_db.update_one(
+                    {"_id": OWNER_SESSION_ID},
+                    {"$unset": {"session_string": ""}},
+                )
+            return session_string
+
+        # Upgrade a session saved in plaintext by an older release. The plaintext
+        # field is removed only after encryption succeeds with the configured key.
+        session_string = str(data.get("session_string") or "")
+        if not session_string:
             return None
-        session_string = decrypt_session(encrypted)
+        encrypted = encrypt_session(session_string)
         await self.user_session_db.update_one(
             {"_id": OWNER_SESSION_ID},
             {
                 "$set": {
-                    "session_string": session_string,
+                    "encrypted_session": encrypted,
                     "updated_at": datetime.now(timezone.utc),
                 },
-                "$unset": {"encrypted_session": ""},
+                "$unset": {"session_string": ""},
             },
         )
         return session_string

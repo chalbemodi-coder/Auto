@@ -25,6 +25,7 @@ from database import DataBase
 from functions.config import Var
 from functions.info import AnimeInfo
 from functions.schedule import ScheduleTasks
+from functions.session_store import validate_session_key
 from functions.tools import Tools
 from functions.utils import AdminUtils
 from libs.ariawarp import Torrent
@@ -251,6 +252,10 @@ async def _login(event):
         return
     if not Var.OWNER:
         return await event.reply("Owner login is disabled: configure the numeric OWNER ID first.")
+    try:
+        validate_session_key()
+    except RuntimeError as error:
+        return await event.reply(f"Login is unavailable: {error}")
     if bot.user_client:
         try:
             if bot.user_client.is_connected() and await bot.user_client.is_user_authorized():
@@ -343,7 +348,7 @@ async def _login(event):
             login_completed = True
             LOGS.info(f"Owner Telegram session authorized for numeric owner ID {Var.OWNER}.")
             return await event.reply(
-                "Telegram login succeeded. The session is saved as plain text in MongoDB without encryption. Restrict database access."
+                "Telegram login succeeded. The session is encrypted in MongoDB. Keep SESSION_ENCRYPTION_KEY secret and backed up; losing it means you must run /login again."
             )
     except TimeoutError:
         return await event.reply("Login timed out. Run `/login` again when ready.")

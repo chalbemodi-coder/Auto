@@ -97,7 +97,7 @@ class Torrent:
                     last_update = now
 
         await process.wait()
-        return "", None
+        return process.returncode == 0
 
     async def download_magnet(self, link: str, path: str, reporter=None):
-        await self.bash(self.cmd.format(link=link, path=path), reporter)
+        return await self.bash(self.cmd.format(link=link, path=path), reporter)

@@ -6,6 +6,7 @@
 #    the Free Software Foundation, version 3.
 
 import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 from traceback import format_exc
 
@@ -604,7 +605,15 @@ async def anime(data):
                     status_channel=chat_info["chat_id"] if chat_info else None,
                 )
                 await reporter.alert_new_file_founded()
-                await torrent.download_magnet(item.link, "./downloads/", reporter)
+                downloaded = await torrent.download_magnet(item.link, "./downloads/", reporter)
+                if not downloaded or not os.path.isfile(filename) or os.path.getsize(filename) == 0:
+                    await reporter.report_error(
+                        f"Download failed or no peers were available for `{item.title}`.",
+                        log=True,
+                    )
+                    if reporter.msg:
+                        await reporter.msg.delete()
+                    continue
                 executor = Executors(
                     bot,
                     dB,

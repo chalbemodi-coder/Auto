@@ -27,7 +27,7 @@ from libs.logger import LOGS
 
 class Torrent:
     def __init__(self) -> None:
-        self.cmd = """aria2c '''{link}''' -x 10 -j 10 --seed-time=0 --summary-interval=1 --show-console-readout=false -d '{path}'"""
+        self.cmd = """aria2c '''{link}''' -x 10 -j 10 --seed-time=0 --bt-stop-timeout=600 --timeout=60 --connect-timeout=30 --max-tries=3 --retry-wait=30 --summary-interval=1 --show-console-readout=false -d '{path}'"""
 
     async def bash(self, cmd, reporter=None):
         process = await asyncio.create_subprocess_shell(

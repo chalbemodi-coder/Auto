@@ -86,9 +86,7 @@ class Torrent:
                     try:
                         if hasattr(reporter, "msg"):
                             if reporter.msg:
-                                await reporter.msg.edit(
-                                    text, buttons=reporter.get_buttons()
-                                )
+                                await reporter.msg.edit(text)
                         else:
                             await reporter.edit(text)
                     except MessageNotModifiedError:

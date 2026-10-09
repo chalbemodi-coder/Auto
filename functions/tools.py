@@ -75,7 +75,16 @@ class Tools:
         try:
             if not link:
                 return None
-            image = await self.async_searcher(link, re_content=True)
+            async with aiohttp.ClientSession() as client:
+                response = await client.get(link, timeout=aiohttp.ClientTimeout(total=20))
+                if response.status != 200:
+                    return None
+                content_type = (response.headers.get("Content-Type") or "").lower()
+                if content_type and not content_type.startswith("image/"):
+                    return None
+                image = await response.read()
+            if not image:
+                return None
             clean_link = link.split("?")[0]
             filename = clean_link.split("/")[-1]
             if len(filename) > 30 or not filename.lower().endswith(
@@ -114,6 +123,8 @@ class Tools:
 
     async def _poster(self, bot, anime_info, channel_id=None):
         thumb = await self.cover_dl((await anime_info.get_cover()))
+        if not thumb:
+            thumb = await self.cover_dl((await anime_info.get_poster()))
         caption = await anime_info.get_caption()
         return await bot.upload_poster(
             thumb or "assest/poster_not_found.jpg",

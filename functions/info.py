@@ -18,7 +18,9 @@
 
 import re
 from traceback import format_exc
+from urllib.parse import quote
 
+import aiohttp
 import anitopy
 
 from libs.kitsu import RawAnimeInfo
@@ -53,20 +55,24 @@ class AnimeInfo:
     async def get_poster(self):
         try:
             if self.proper_name:
-                anime_poster = await self.kitsu.search(self.proper_name)
-                return anime_poster.get("poster_img") or None
+                anime_poster = (await self.kitsu.search(self.proper_name)) or {}
+                return anime_poster.get("poster_img") or await self._fallback_poster()
         except BaseException:
             LOGS.error(str(format_exc()))
+            return await self._fallback_poster()
 
     async def get_cover(self):
         try:
             if self.proper_name:
-                anime_poster = await self.kitsu.search(self.proper_name)
-                if anime_poster.get("anilist_id"):
-                    return anime_poster.get("anilist_poster")
-                return None
+                anime_poster = (await self.kitsu.search(self.proper_name)) or {}
+                return (
+                    anime_poster.get("anilist_poster")
+                    or anime_poster.get("poster_img")
+                    or await self._fallback_poster()
+                )
         except BaseException:
             LOGS.error(str(format_exc()))
+            return await self._fallback_poster()
 
     async def get_caption(self):
         try:
@@ -134,3 +140,23 @@ class AnimeInfo:
         except Exception as error:
             LOGS.error(str(error))
             LOGS.exception(format_exc())
+
+    async def _fallback_poster(self):
+        """Use Jikan/MAL artwork when Kitsu or AniList has no poster."""
+        if not self.proper_name:
+            return None
+        try:
+            url = f"https://api.jikan.moe/v4/anime?q={quote(self.proper_name)}&limit=1"
+            timeout = aiohttp.ClientTimeout(total=12)
+            async with aiohttp.ClientSession(timeout=timeout) as client:
+                response = await client.get(url, headers={"User-Agent": "AutoAnimeBot/1.0"})
+                if response.status != 200:
+                    return None
+                data = (await response.json()).get("data") or []
+                if not data:
+                    return None
+                images = data[0].get("images", {}).get("jpg", {})
+                return images.get("large_image_url") or images.get("image_url")
+        except Exception as error:
+            LOGS.warning(f"Jikan poster fallback failed: {error}")
+            return None

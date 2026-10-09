@@ -579,19 +579,6 @@ async def anime(data):
         posters = []
         side_posters = []
         chat_info = None
-        if await dB.is_separate_channel_upload():
-            chat_info = await tools.get_chat_info(bot, anime_info, dB)
-            if not chat_info:
-                raise RuntimeError("Could not create/find the separate anime channel.")
-            buttons = [
-                [
-                    Button.url(
-                        f"🟦 EPISODE {anime_info.data.get('episode_number', '')}".strip(),
-                        url=chat_info["invite_link"],
-                    )
-                ]
-            ]
-
         buttons = [[]]
         original_upload = await dB.is_original_upload()
         button_upload = await dB.is_button_upload()
@@ -614,6 +601,20 @@ async def anime(data):
                     if reporter.msg:
                         await reporter.msg.delete()
                     continue
+                if await dB.is_separate_channel_upload() and not chat_info:
+                    chat_info = await tools.get_chat_info(bot, anime_info, dB)
+                    if not chat_info:
+                        raise RuntimeError("Could not create/find the separate anime channel.")
+                    buttons = [[
+                        Button.url(
+                            f"🟦 EPISODE {anime_info.data.get('episode_number', '')}".strip(),
+                            url=chat_info["invite_link"],
+                        )
+                    ]]
+                    reporter.status_channel = chat_info["chat_id"]
+                    if reporter.msg:
+                        await reporter.msg.delete()
+                    await reporter.alert_new_file_founded()
                 executor = Executors(
                     bot,
                     dB,

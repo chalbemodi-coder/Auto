@@ -130,7 +130,9 @@ class Bot(TelegramClient):
             if not getattr(privileges, "can_post_messages", False):
                 raise ValueError("For this channel role, give the bot permission to post messages.")
 
-    async def upload_anime(self, file, caption, thumb=None, is_button=False):
+    async def upload_anime(
+        self, file, caption, thumb=None, is_button=False, progress_message=None
+    ):
         if not self.pyro_client.is_connected:
             try:
                 await self.pyro_client.connect()
@@ -153,17 +155,31 @@ class Bot(TelegramClient):
                 raise RuntimeError("Set at least one main channel with /setchannel.")
 
         posts = []
+        progress_state = {"last": -1}
+
+        async def upload_progress(current, total, *_):
+            if not progress_message or not total:
+                return
+            percent = int(current * 100 / total)
+            if percent == 100 or percent - progress_state["last"] >= 5:
+                progress_state["last"] = percent
+                try:
+                    await progress_message.edit(
+                        f"**Uploading Anime**\n\n**File:** `{caption}`\n**Upload:** `{percent}%`"
+                    )
+                except Exception:
+                    pass
+
         for channel_id in channels:
             try:
-                posts.append(
-                    await self.pyro_client.send_document(
-                        channel_id,
-                        file,
-                        caption=f"`{caption}`",
-                        force_document=True,
-                        thumb=thumb or "thumb.jpg",
-                    )
-                )
+                kwargs = {
+                    "caption": f"`{caption}`",
+                    "force_document": True,
+                    "thumb": thumb or "thumb.jpg",
+                }
+                if progress_message:
+                    kwargs["progress"] = upload_progress
+                posts.append(await self.pyro_client.send_document(channel_id, file, **kwargs))
             except Exception as error:
                 self.logger.error(f"Anime upload failed for channel {channel_id}: {error}")
         if not posts:

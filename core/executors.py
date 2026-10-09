@@ -78,11 +78,15 @@ class Executors:
             await self.reporter.started_uploading()
             if self.is_button:
                 messages = await self.bot.upload_anime(
-                    self.output_file, rename, thumb or "thumb.jpg", is_button=True
+                    self.output_file,
+                    rename,
+                    thumb or "thumb.jpg",
+                    is_button=True,
+                    progress_message=self.reporter.msg,
                 )
                 msg = messages[0]
                 btn = Button.url(
-                    f"{self.anime_info.data.get('video_resolution')}",
+                    f"🟥 {self.anime_info.data.get('video_resolution')}",
                     url=f"https://t.me/{((await self.bot.get_me()).username)}?start={msg.id}",
                 )
                 self.msg_id = msg.id
@@ -90,7 +94,10 @@ class Executors:
                 return True, btn
 
             messages = await self.bot.upload_anime(
-                self.output_file, rename, thumb or "thumb.jpg"
+                self.output_file,
+                rename,
+                thumb or "thumb.jpg",
+                progress_message=self.reporter.msg,
             )
             self.msg_id = messages[0].id
             self.message_refs = [

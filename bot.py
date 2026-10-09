@@ -585,7 +585,7 @@ async def anime(data):
             buttons = [
                 [
                     Button.url(
-                        f"EPISODE {anime_info.data.get('episode_number', '')}".strip(),
+                        f"🟦 EPISODE {anime_info.data.get('episode_number', '')}".strip(),
                         url=chat_info["invite_link"],
                     )
                 ]
@@ -598,7 +598,11 @@ async def anime(data):
         for item in torrents:
             try:
                 filename = f"downloads/{item.title}"
-                reporter = Reporter(bot, item.title)
+                reporter = Reporter(
+                    bot,
+                    item.title,
+                    status_channel=chat_info["chat_id"] if chat_info else None,
+                )
                 await reporter.alert_new_file_founded()
                 await torrent.download_magnet(item.link, "./downloads/", reporter)
                 executor = Executors(

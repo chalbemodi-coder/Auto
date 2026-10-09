@@ -50,15 +50,16 @@ LOGS.info(f"""
 
 
 class Reporter:
-    def __init__(self, client: TelegramClient, file_name: str):
+    def __init__(self, client: TelegramClient, file_name: str, status_channel=None):
         self.client: TelegramClient = client
         self.file_name = file_name
+        self.status_channel = status_channel
         self.msg = None
 
     async def alert_new_file_founded(self):
         await self.awake()
         main_channels = list(Var.MAIN_CHANNELS)
-        destination = (
+        destination = self.status_channel or (
             (main_channels[0] if main_channels else Var.LOG_CHANNEL)
             if Var.LOG_ON_MAIN
             else Var.LOG_CHANNEL
@@ -106,7 +107,7 @@ class Reporter:
             )
         except BaseException:
             pass  # ValueError Sometimes From telethon
-        if Var.LOG_ON_MAIN:
+        if Var.LOG_ON_MAIN and not self.status_channel:
             await self.msg.delete()
 
     async def awake(self):  # in case

@@ -576,6 +576,8 @@ async def anime(data):
         anime_info = AnimeInfo(torrents[0].title)
         # Main-channel post is created only after the first quality upload succeeds.
         posters = []
+        side_posters = []
+        chat_info = None
         if await dB.is_separate_channel_upload():
             chat_info = await tools.get_chat_info(bot, anime_info, dB)
             if not chat_info:
@@ -588,11 +590,6 @@ async def anime(data):
                     )
                 ]
             ]
-            side_posters = await tools._poster(bot, anime_info, chat_info["chat_id"])
-            if not isinstance(side_posters, list):
-                side_posters = [side_posters]
-            for poster in side_posters:
-                await poster.edit(buttons=buttons)
 
         buttons = [[]]
         original_upload = await dB.is_original_upload()
@@ -618,6 +615,14 @@ async def anime(data):
                         posters = await tools._poster(bot, anime_info)
                         if not isinstance(posters, list):
                             posters = [posters]
+                    if chat_info and not side_posters and item is first_quality:
+                        side_posters = await tools._poster(
+                            bot, anime_info, chat_info["chat_id"]
+                        )
+                        if not isinstance(side_posters, list):
+                            side_posters = [side_posters]
+                        for poster in side_posters:
+                            await poster.edit(buttons=buttons)
                     if button:
                         if len(buttons[0]) == 2:
                             buttons.append([button])

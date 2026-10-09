@@ -574,9 +574,8 @@ async def anime(data):
             LOGS.warning("Skipping anime release: no torrent or no main channel is configured.")
             return
         anime_info = AnimeInfo(torrents[0].title)
-        posters = await tools._poster(bot, anime_info)
-        if not isinstance(posters, list):
-            posters = [posters]
+        # Main-channel post is created only after the first quality upload succeeds.
+        posters = []
         if await dB.is_separate_channel_upload():
             chat_info = await tools.get_chat_info(bot, anime_info, dB)
             if not chat_info:
@@ -589,15 +588,16 @@ async def anime(data):
                     )
                 ]
             ]
-            for poster in posters:
+            side_posters = await tools._poster(bot, anime_info, chat_info["chat_id"])
+            if not isinstance(side_posters, list):
+                side_posters = [side_posters]
+            for poster in side_posters:
                 await poster.edit(buttons=buttons)
-            posters = await tools._poster(bot, anime_info, chat_info["chat_id"])
-            if not isinstance(posters, list):
-                posters = [posters]
 
         buttons = [[]]
         original_upload = await dB.is_original_upload()
         button_upload = await dB.is_button_upload()
+        first_quality = torrents[0]
         for item in torrents:
             try:
                 filename = f"downloads/{item.title}"
@@ -614,6 +614,10 @@ async def anime(data):
                 )
                 result, button = await executor.execute()
                 if result:
+                    if not posters and item is first_quality:
+                        posters = await tools._poster(bot, anime_info)
+                        if not isinstance(posters, list):
+                            posters = [posters]
                     if button:
                         if len(buttons[0]) == 2:
                             buttons.append([button])

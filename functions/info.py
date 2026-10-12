@@ -47,12 +47,7 @@ class AnimeInfo:
         anime_name = self.data.get("anime_title")
         try:
             anime = (await self.kitsu.search(self.proper_name)) or {}
-            english = (anime.get("english_title") or "").strip()
-            japanese = (anime.get("japanese_title") or "").strip()
-            original = japanese or (anime_name or "").strip()
-            if english and original and english.casefold() != original.casefold():
-                return f"{english} — {original}"
-            return english or original or anime_name
+            return anime.get("english_title") or anime_name
         except BaseException:
             LOGS.error(str(format_exc()))
             return anime_name.strip()
